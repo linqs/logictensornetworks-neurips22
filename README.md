@@ -1,3 +1,7 @@
+A fork of https://github.com/logictensornetworks/logictensornetworks with some changes for experiments.
+
+---
+
 # Logic Tensor Networks (LTN)
 
 Logic Tensor Network (LTN) is a neurosymbolic framework that supports querying, learning and reasoning with both rich data and rich abstract knowledge about the world.
