@@ -1,5 +1,7 @@
 from collections import defaultdict
 
+import tensorflow as tf
+
 def train(
         epochs,
         metrics_dict, 
@@ -33,15 +35,28 @@ def train(
         headers = ",".join(["Epoch"]+list(metrics_dict.keys()))
         csv_template = ",".join(["{}" for _ in range(len(metrics_dict)+1)])
         csv_file.write(headers+"\n")
-    
+
+    trainTime = 0.0
+    testTime = 0.0
+
     for epoch in range(epochs):
         for metrics in metrics_dict.values():
             metrics.reset_states()
 
+        start = tf.timestamp()
+
         for batch_elements in ds_train:
             train_step(*batch_elements,**scheduled_parameters[epoch])
+
+        end = tf.timestamp()
+        trainTime += (end - start)
+        start = end
+
         for batch_elements in ds_test:
             test_step(*batch_elements,**scheduled_parameters[epoch])
+
+        end = tf.timestamp()
+        testTime = (end - start)
 
         metrics_results = [metrics.result() for metrics in metrics_dict.values()]
         print(template.format(epoch,*metrics_results))
@@ -50,3 +65,6 @@ def train(
             csv_file.flush()
     if csv_path is not None:
         csv_file.close()
+
+    tf.print('Train Time - ', trainTime)
+    tf.print('Test Time - ', testTime)
