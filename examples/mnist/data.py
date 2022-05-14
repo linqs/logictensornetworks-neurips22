@@ -31,11 +31,42 @@ def get_mnist_dataset(
             .take(count_test).shuffle(buffer_size).batch(batch_size)
     return ds_train, ds_test
 
+def add_overlap(overlap_resample_proportion, img_per_operand, label_per_operand):
+    # Flatten the lists.
+    n_operands = len(img_per_operand)
+    num_pairs = len(img_per_operand[0])
+
+    images = np.concatenate(img_per_operand)
+    labels = np.concatenate(label_per_operand)
+
+    num_digits = len(images)
+    indexes = list(range(num_digits))
+
+    for _ in range(int(overlap_resample_proportion * num_digits)):
+        indexes.append(np.random.randint(0, num_digits))
+    np.random.shuffle(indexes)
+
+    final_images = [[] for _ in range(n_operands)]
+    final_labels = [[] for _ in range(n_operands)]
+
+    for i in range(num_pairs):
+        for j in range(n_operands):
+            final_images[j].append(images[indexes[i * 2 + j]])
+            final_labels[j].append(labels[indexes[i * 2 + j]])
+
+    for j in range(n_operands):
+        final_images[j] = np.stack(final_images[j])
+        final_labels[j] = np.stack(final_labels[j])
+
+    return final_images, final_labels
+
+
 def get_mnist_op_dataset(
         count_train,
         count_test,
         buffer_size,
         batch_size,
+        overlap_resample_proportion = 0,
         n_operands=2,
         op=lambda args: args[0]+args[1]):
     """Returns tf.data.Dataset instance for an operation with the numbers of the mnist dataset.
@@ -55,19 +86,27 @@ def get_mnist_op_dataset(
     if count_test*n_operands > 10000:
         raise ValueError("The MNIST dataset comes with 10000 test examples. \
             Cannot fetch %i examples for each %i operands for testing." %(count_test,n_operands))
-    
+
     img_train,label_train,img_test,label_test = get_mnist_data_as_numpy()
-    
+
     img_per_operand_train = [img_train[i*count_train:i*count_train+count_train] for i in range(n_operands)]
     label_per_operand_train = [label_train[i*count_train:i*count_train+count_train] for i in range(n_operands)]
     label_result_train = np.apply_along_axis(op,0,label_per_operand_train)
+
     img_per_operand_test = [img_test[i*count_test:i*count_test+count_test] for i in range(n_operands)]
     label_per_operand_test = [label_test[i*count_test:i*count_test+count_test] for i in range(n_operands)]
     label_result_test = np.apply_along_axis(op,0,label_per_operand_test)
-    
+
+    if (overlap_resample_proportion > 0):
+        img_per_operand_train, label_per_operand_train = add_overlap(overlap_resample_proportion, img_per_operand_train, label_per_operand_train)
+        label_result_train = np.apply_along_axis(op,0,label_per_operand_train)
+
+        img_per_operand_test, label_per_operand_test = add_overlap(overlap_resample_proportion, img_per_operand_test, label_per_operand_test)
+        label_result_test = np.apply_along_axis(op,0,label_per_operand_test)
+
     ds_train = tf.data.Dataset.from_tensor_slices(tuple(img_per_operand_train)+(label_result_train,))\
             .take(count_train).shuffle(buffer_size).batch(batch_size)
     ds_test = tf.data.Dataset.from_tensor_slices(tuple(img_per_operand_test)+(label_result_test,))\
             .take(count_test).shuffle(buffer_size).batch(batch_size)
-    
+
     return ds_train, ds_test

@@ -12,6 +12,7 @@ def parse_args():
     parser.add_argument('--n-examples-train',type=int,default=30000)
     parser.add_argument('--n-examples-test',type=int,default=5000)
     parser.add_argument('--batch-size',type=int,default=32)
+    parser.add_argument('--overlap',type=float,default=0.0)
     args = parser.parse_args()
     dict_args = vars(args)
     return dict_args
@@ -20,6 +21,7 @@ args = parse_args()
 n_examples_train = args['n_examples_train']
 n_examples_test = args['n_examples_test']
 batch_size = args['batch_size']
+overlap = args['overlap']
 EPOCHS = args['epochs']
 csv_path = args['csv_path']
 
@@ -30,6 +32,7 @@ ds_train, ds_test = data.get_mnist_op_dataset(
         count_test=n_examples_test,
         buffer_size=10000,
         batch_size=batch_size,
+        overlap_resample_proportion = overlap,
         n_operands=2,
         op=lambda args: args[0]+args[1])
 
@@ -100,7 +103,7 @@ def train_step(images_x, images_y, labels_z, **parameters):
     predictions_z = predictions_x + predictions_y
     match = tf.equal(predictions_z,tf.cast(labels_z,predictions_z.dtype))
     metrics_dict['train_accuracy'](tf.reduce_mean(tf.cast(match,tf.float32)))
-    
+
 @tf.function
 def test_step(images_x, images_y, labels_z, **parameters):
     # loss

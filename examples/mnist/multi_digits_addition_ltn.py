@@ -11,6 +11,7 @@ def parse_args():
     parser.add_argument('--n-examples-train',type=int,default=15000)
     parser.add_argument('--n-examples-test',type=int,default=2500)
     parser.add_argument('--batch-size',type=int,default=32)
+    parser.add_argument('--overlap',type=float,default=0.0)
     parser.add_argument('--p',type=str,choices=["1","2","schedule"], default="schedule")
     args = parser.parse_args()
     dict_args = vars(args)
@@ -20,6 +21,7 @@ args = parse_args()
 n_examples_train = args['n_examples_train']
 n_examples_test = args['n_examples_test']
 batch_size = args['batch_size']
+overlap = args['overlap']
 EPOCHS = args['epochs']
 csv_path = args['csv_path']
 p_type = args["p"]
@@ -31,6 +33,7 @@ ds_train, ds_test = data.get_mnist_op_dataset(
         count_test=n_examples_test,
         buffer_size=10000,
         batch_size=batch_size,
+        overlap_resample_proportion = overlap,
         n_operands=4,
         op=lambda args: 10*args[0]+args[1]+10*args[2]+args[3])
 
